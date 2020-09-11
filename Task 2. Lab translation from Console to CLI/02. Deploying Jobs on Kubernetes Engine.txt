@@ -1,0 +1,231 @@
+AK8S-07 Deploying Jobs on Kubernetes Engine
+-------------------------------------------
+
+0.
+gcloud auth list
+gcloud config list project
+
+Set the project ID
+gcloud config set project [project-ID]
+
+Task 1. 
+-----
+
+Define and deploy a Job manifest
+--------------------------------
+1.
+In Cloud Shell, type the following command to set the environment variable for the zone and cluster name.
+-
+export my_zone=us-central1-a
+export my_cluster=standard-cluster-1
+
+
+
+2. 
+-----
+Configure kubectl tab completion in Cloud Shell.
+source <(kubectl completion bash)
+
+
+
+3. 
+-----
+In Cloud Shell, type the following command to create a Kubernetes cluster.
+gcloud container clusters create $my_cluster --num-nodes 3  --enable-ip-alias --zone $my_zone
+
+
+
+4. 
+-----
+In Cloud Shell, configure access to your cluster for the kubectl command-line tool, using the following command:
+gcloud container clusters get-credentials $my_cluster --zone $my_zone
+
+
+
+5. 
+-----
+In Cloud Shell enter the following command to clone the repository to the lab Cloud Shell.
+git clone https://github.com/GoogleCloudPlatformTraining/training-data-analyst
+
+
+
+6. 
+-----
+Change to the directory that contains the sample files for this lab.
+cd ~/training-data-analyst/courses/ak8s/07_Jobs_CronJobs
+
+
+
+Create and run a Job
+--------------------
+You will create a job using a sample deployment manifest called example-job.yaml that has been provided for you. 
+This Job computes the value of Pi to 2,000 places and then prints the result.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Unique key of the Job instance
+  name: example-job
+spec:
+  template:
+    metadata:
+      name: example-job
+    spec:
+      containers:
+      - name: pi
+        image: perl
+        command: ["perl"]
+        args: ["-Mbignum=bpi", "-wle", "print bpi(2000)"]
+      # Do not restart containers after they exit
+      restartPolicy: Never
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Unique key of the Job instance
+  name: example-job
+spec:
+  template:
+    metadata:
+      name: example-job
+    spec:
+      containers:
+      - name: pi
+        image: perl
+        command: ["perl"]
+        args: ["-Mbignum=bpi", "-wle", "print bpi(2000)"]
+      # Do not restart containers after they exit
+      restartPolicy: Never
+
+
+
+1-2A. 
+-----
+To create a Job from this file, execute the following command:
+kubectl apply -f example-job.yaml
+
+
+1-2B. 
+-----
+To check the status of this Job, execute the following command:
+kubectl describe job example-job
+
+
+1-2C. To view all Pod resources in your cluster, including Pods created by the Job which have completed, execute the following command:
+kubectl get pods
+
+
+
+Clean up and delete the Job
+---------------------------
+When a Job completes, the Job stops creating Pods. The Job API object is not removed when it completes, which allows you to view its status. Pods created by the Job are not deleted, but they are terminated. Retention of the Pods allows you to view their logs and to interact with them.
+
+1-2D. 
+-----
+To get a list of the Jobs in the cluster, execute the following command:
+kubectl get jobs
+
+
+1-2E. 
+-----
+To retrieve the log file from the Pod that ran the Job execute the following command. 
+You must replace [POD-NAME] with the node name you recorded in the last task
+kubectl logs [POD-NAME]
+kubectl logs example-job-qnlc4
+
+
+1-2F. 
+-----
+To delete the Job, execute the following command:
+kubectl delete job example-job
+
+
+
+
+
+Task 2. 
+Define and deploy a CronJob manifest
+------------------------------------
+You can create CronJobs to perform finite, time-related tasks that run once or repeatedly at a time that you specify.
+
+Create and run a CronJob
+------------------------
+The CronJob manifest file example-cronjob.yaml has been provided for you. 
+This CronJob deploys a new container every minute that prints the time, date and "Hello, World!".
+----------
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            args:
+            - /bin/sh
+            - -c
+            - date; echo "Hello, World!"
+          restartPolicy: OnFailure
+
+2A.
+To create a Job from this file, execute the following command:
+kubectl apply -f example-cronjob.yaml
+
+
+Create and run a CronJob
+------------------------
+2B.
+To get a list of the Jobs in the cluster, execute the following command:
+kubectl get jobs
+
+2C.
+To check the status of this Job, execute the following command, where [job_name] is the name of your job:
+kubectl describe job [job_name]
+kubectl describe job hello
+
+
+Make a note of the name of the Pod that was used by this job.
+2D.
+View the output of the Job by querying the logs for the Pod. Replace [POD-NAME] with the name of the Pod you recorded in the last step.
+kubectl logs [POD-NAME]
+
+2E
+To view all job resources in your cluster, including all of the Pods created by the CronJob which have completed, execute the following command:
+kubectl get jobs
+
+
+Clean up and delete the Job
+----------------------------
+In order to stop the CronJob and clean up the Jobs associated with it you must delete the CronJob.
+
+2F
+To delete all these jobs, execute the following command:
+kubectl delete cronjob hello
+
+2G
+To verify that the jobs were deleted, execute the following command:
+kubectl get jobs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

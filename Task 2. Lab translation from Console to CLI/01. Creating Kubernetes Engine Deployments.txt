@@ -1,0 +1,242 @@
+Creating Kubernetes Engine Deployments
+
+
+
+-------------------------------------------------------------
+Task 1. 
+-------
+Create deployment manifests and deploy to the cluster
+-------------------------------------------------------------
+
+Create a deployment manifest for a Pod inside the cluster.
+
+1-A.
+Create a GKE cluster
+---------------------
+Set the environment variable for the zone and cluster name.
+
+# export my_zone=us-central1-a
+# export my_cluster=standard-cluster-1
+
+Set the project ID
+# gcloud config set project [project-ID]
+
+Create a Kubernetes cluster.
+# gcloud container clusters create $my_cluster --num-nodes 3  --enable-ip-alias --zone $my_zone
+
+Configure access to your cluster for the kubectl command-line tool, using the following command:
+# gcloud container clusters get-credentials $my_cluster --zone $my_zone
+
+Clone the repository to the lab Cloud Shell.
+# git clone https://github.com/GoogleCloudPlatformTraining/training-data-analyst
+
+Change to the directory that contains the sample files for the project.
+# cd ~/training-data-analyst/courses/ak8s/06_Deployments/
+
+
+
+
+1-B. 
+Create a deployment manifest
+-----------------------------
+
+To deploy a manifest named nginx-deployment.yaml, execute the following command:
+# kubectl apply -f ./nginx-deployment.yaml
+
+View a list of deployments, execute the following command:
+# kubectl get deployments
+
+
+
+
+
+
+
+Task 2.
+------- 
+Manually scale up and down the number of Pods in deployments
+-------------------------------------------------------------
+2-A
+Scale Pods up and down in the shell
+-----------------------------
+
+View a list of Pods in the deployments:
+# kubectl get deployments
+
+Scale the Pod back up to three replicas, execute the following command:
+# kubectl scale --replicas=3 deployment nginx-deployment
+
+View the list of Pods in the deployments again:
+# kubectl get deployments
+
+
+
+
+
+Task 3. Trigger a deployment rollout and a deployment rollback
+-------------------------------------------------------------
+A deployment's rollout is triggered if and only if the deployment's Pod template (that is, .spec.template) is changed, for example, if the labels or container images of the template are updated. Other updates, such as scaling the deployment, do not trigger a rollout.
+
+
+3-A
+Trigger a deployment rollout
+-----------------------------
+
+Update the version of nginx in the deployment:
+# kubectl set image deployment.v1.apps/nginx-deployment nginx=nginx:1.9.1 --record
+
+This updates the container image in your Deployment to nginx v1.9.1.
+
+
+
+3-B
+Update version of nginx in the deployment
+-----------------------------
+
+To view the rollout status, execute the following command:
+# kubectl rollout status deployment.v1.apps/nginx-deployment
+
+
+Verify there is a change by getting the list of deployments.
+# kubectl get deployments
+
+
+View the rollout history of the deployment.
+# kubectl rollout history deployment nginx-deployment
+
+
+
+3-C
+Trigger a deployment rollback
+-----------------------------
+
+To roll back an object's rollout, the kubectl rollout undo command can be used.
+
+Roll back to the previous version of the nginx deployment:
+# kubectl rollout undo deployments nginx-deployment
+
+View the updated rollout history of the deployment.
+# kubectl rollout history deployment nginx-deployment
+
+View the details of the latest deployment revision
+# kubectl rollout history deployment/nginx-deployment --revision=3
+
+
+
+
+
+
+
+Task 4. Define the service type in the manifest
+-------------------------------------------------------------
+
+Create and verify a service that controls inbound traffic to an application. 
+Services can be configured as ClusterIP, NodePort or LoadBalancer types. 
+In this lab you configure a LoadBalancer.
+
+Given a manifest file called service-nginx.yaml that deploys a LoadBalancer service type has been created.
+The service is configured to distribute inbound traffic on TCP port 60000 to port 80 on any containers that have the label app: nginx.
+
+# Conatent of service-nginx.yaml below:
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+  - protocol: TCP
+    port: 60000
+    targetPort: 80
+
+To deploy a manifest, execute the following command:
+# kubectl apply -f ./service-nginx.yaml
+
+
+4-B
+Verify the LoadBalancer creation
+-----------------------------
+
+To view the details of the nginx service, execute the following command:
+# kubectl get service nginx
+
+
+
+Task 5. Perform a canary deployment
+-------------------------------------------------------------
+
+A canary deployment is a separate deployment used to test a new version of your application. 
+A single service targets both the canary and the normal deployments. 
+And it can direct a subset of users to the canary version to mitigate the risk of new releases. 
+The manifest file nginx-canary.yaml that is provided for you deploys a single pod running a newer version of nginx than your main deployment. 
+In this task, you create a canary deployment using this new deployment file.
+
+thus it is available to fewer users than the normal deployment.
+
+Create the canary deployment based on the configuration file.
+
+kubectl apply -f nginx-canary.yaml
+
+
+The manifest file nginx-canary.yaml below deploys a single pod running a newer version of nginx than a main deployment. 
+Create a canary deployment using this new deployment file.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-canary
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+        track: canary
+        Version: 1.9.1
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+
+Create the canary deployment based on the configuration file.
+# kubectl apply -f nginx-canary.yaml
+
+
+When the deployment is complete, verify that both the nginx and the nginx-canary deployments are present.
+# kubectl get deployments
+
+
+Switch back to the Cloud Shell and scale down the primary deployment to 0 replicas.
+# kubectl scale --replicas=0 deployment nginx-deployment
+
+Verify that the only running replica is now the Canary deployment:
+# kubectl get deployments
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
